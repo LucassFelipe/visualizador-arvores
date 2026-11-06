@@ -340,3 +340,32 @@ Cada fase termina com o app funcionando e um commit convencional.
 4. **Arrasto:** fundo do canvas faz pan; nós não são arrastáveis.
 
 > Sem atalhos globais além de undo/redo. O restante da interação é por botões e navegação nativa por teclado.
+
+---
+
+## 9. Status de implementação
+
+### Concluído
+
+- [x] Lógica pura de BST (inserir, buscar, remover, editar subárvore, adicionar filho, validação).
+- [x] Layout em colunas por ordem simétrica, com arestas calculadas e zoom/pan.
+- [x] Engine de passos pré-computados para operações e percursos.
+- [x] Canvas animado com Motion, destaques de caminho/comparação/encontrado.
+- [x] Player com play/pause, anterior/próximo, reinício, timeline e velocidade.
+- [x] Painel de métricas, sequência dos percursos e inspetor do editor livre.
+- [x] Editor livre com edição por reconstrução, adição de filhos e remoção.
+- [x] Undo/redo com histórico de 50 estados e atalhos `Ctrl/Cmd+Z` / `Ctrl/Cmd+Shift+Z`.
+- [x] Autosave em `localStorage` com debounce e restauração validada.
+- [x] Layout responsivo (sidebar à direita no desktop, painel inferior no mobile).
+- [x] `prefers-reduced-motion` respeitado nos pulsos e transições.
+- [x] 47 testes de lógica, typecheck e build de produção passando.
+- [x] QA funcional no navegador: inserção, duplicado, busca, 3 casos de remoção, percursos, edição, undo/redo, autosave e limpeza.
+
+### Verificação
+
+```bash
+npm test          # 47 testes
+npm run typecheck # sem erros
+npm run build     # build de produção
+npm run dev       # http://localhost:3000
+```
