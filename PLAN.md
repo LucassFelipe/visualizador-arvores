@@ -126,10 +126,13 @@ Invariantes testadas:
 ```ts
 interface AppState {
   tree: Tree;
+  past: Tree[];            // undo (máx. 50)
+  future: Tree[];          // redo
   mode: 'idle' | 'playing' | 'editing';
   operation: OperationResult | null;
   playback: { index: number; playing: boolean; speed: number; order: TraversalOrder | null };
   selectedId: NodeId | null;
+  hydrated: boolean;       // evita mismatch de SSR com localStorage
   notice: { tone: 'info' | 'success' | 'error'; text: string } | null;
 }
 ```
@@ -206,11 +209,12 @@ test/
 ### 4.5 Editor livre
 
 - Clique no nó → seleciona → inspetor abre.
-- Editar valor: validado contra os limites da BST naquele ponto (`min < valor < max`). Inválido é rejeitado com explicação.
+- Editar valor: a **subárvore é reconstruída**. O novo valor ainda precisa respeitar os limites dos ancestrais; se não respeitar, é rejeitado com o intervalo permitido. Estando válido, destacamos a subárvore, reinserimos o novo valor e depois os descendentes na ordem prévia (pré-ordem), gerando uma BST válida e com forma próxima da original.
 - Adicionar filho: slots `+` aparecem nos lados vazios do nó selecionado.
 - Excluir: mesmo algoritmo de remoção, sem animação longa.
 - **Arrastar o fundo = pan**; nós não são arrastáveis (o layout é derivado da estrutura, não de posições manuais).
-- Histórico de undo/redo (ver extras).
+- Histórico de **undo/redo** para todas as mutações (inserir, remover, editar, adicionar filho, limpar), com pilha de até 50 estados. Atalhos `Ctrl/Cmd+Z` e `Ctrl/Cmd+Shift+Z`, além de botões na toolbar.
+- **Autosave** em `localStorage` (debounce de ~400ms). Ao abrir, restaura a última árvore e mostra um aviso discreto com opção de limpar.
 
 ### 4.6 Métricas
 
@@ -226,7 +230,8 @@ test/
 - Play/pause, passo anterior/próximo, reiniciar, velocidade (0.5×–4×).
 - Timeline clicável com um marcador por passo.
 - Mensagem do passo em `aria-live="polite"`.
-- Atalhos: `Espaço` play/pause, `←`/`→` passos, `Esc` cancela seleção, `Enter` no input = inserir.
+- Operações pausam/zeram o playback atual antes de começar.
+- Atalhos: `Ctrl/Cmd+Z` e `Ctrl/Cmd+Shift+Z` para undo/redo. O restante da interação é por botões e foco nativo (sem atalhos globais).
 - Respeita `prefers-reduced-motion`: sem pulsos/transições longas.
 
 ---
@@ -321,17 +326,17 @@ Cada fase termina com o app funcionando e um commit convencional.
 | 3 | Layout tidy + canvas animado (nós e arestas)                 | `feat: add tidy layout and animated tree canvas` |
 | 4 | Engine de passos + inserir/buscar/remover                    | `feat: add step engine for tree operations`      |
 | 5 | Traversals animados + painel de sequência                    | `feat: add animated traversals`                  |
-| 6 | Editor livre + inspetor de nó                                | `feat: add free tree editor`                     |
-| 7 | Métricas, player e polimento visual                          | `feat: add metrics panel and playback polish`    |
+| 6 | Editor livre + inspetor + undo/redo                       | `feat: add free tree editor`                     |
+| 7 | Métricas, player, autosave e polimento visual               | `feat: add metrics panel and playback polish`    |
 | 8 | Acessibilidade, teclado, reduced motion, QA final            | `chore: improve accessibility and final qa`      |
 
 ---
 
-## 8. Decisões pendentes (confirmar antes da fase 2)
+## 8. Decisões fechadas
 
-1. **Duplicados:** rejeitar com aviso (padrão) ou permitir à esquerda/direita?
-2. **Edição de valor:** só permitir se a BST continuar válida (padrão) ou reconstruir a subárvore automaticamente?
-3. **Extras:** incluir undo/redo, autosave em `localStorage` e atalhos de teclado?
-4. **Arrastar nó:** manter pan no fundo (padrão) ou tentar posicionamento manual dos nós?
+1. **Duplicados:** rejeitar com aviso. Valores únicos, nó existente pulsa e mostra "valor já existe".
+2. **Edição de valor:** reconstruir a subárvore (novo valor + descendentes em pré-ordem), validando os limites dos ancestrais.
+3. **Extras no escopo:** undo/redo (50 estados) e autosave em `localStorage`.
+4. **Arrasto:** fundo do canvas faz pan; nós não são arrastáveis.
 
-> Qualquer mudança nestas respostas altera as fases 4 e 6; o restante do plano segue igual.
+> Sem atalhos globais além de undo/redo. O restante da interação é por botões e navegação nativa por teclado.
