@@ -1,0 +1,213 @@
+.header {
+  position: relative;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: var(--header-h);
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  backdrop-filter: blur(16px) saturate(1.15);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex-shrink: 0;
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--accent-border);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, var(--accent-soft) 100%);
+  color: var(--accent);
+  box-shadow:
+    var(--shadow-xs),
+    inset 0 1px 0 #ffffff;
+}
+
+.brandText strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 660;
+  letter-spacing: -0.025em;
+}
+
+.brandText span {
+  display: block;
+  margin-top: -1px;
+  color: var(--muted);
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.valueField {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 8px 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.valueField:focus-within {
+  border-color: var(--accent-border);
+  box-shadow:
+    0 0 0 3px var(--accent-soft),
+    var(--shadow-xs);
+}
+
+.inputIcon {
+  flex-shrink: 0;
+  color: var(--muted-2);
+}
+
+.input {
+  width: 88px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14.5px;
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.input::placeholder {
+  color: var(--muted-2);
+  font-weight: 400;
+}
+
+.input:disabled {
+  color: var(--muted);
+}
+
+.kbd {
+  flex-shrink: 0;
+  padding: 1px 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-subtle);
+  color: var(--muted-2);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 1.45;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.removeButton {
+  color: var(--muted);
+}
+
+.removeButton:hover:not(:disabled) {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.utilities {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-left: 8px;
+  margin-left: 2px;
+  border-left: 1px solid var(--border);
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 6px;
+  background: var(--border);
+}
+
+@media (max-width: 1180px) {
+  .brandText span {
+    display: none;
+  }
+
+  .kbd {
+    display: none;
+  }
+
+  .header {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 960px) {
+  .header {
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    padding: 10px 16px;
+  }
+
+  .controls {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .valueField {
+    flex: 1;
+  }
+
+  .input {
+    width: 100%;
+  }
+
+  .actions {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .actions button {
+    flex: 1;
+  }
+
+  .actions {
+    width: 100%;
+    margin-top: 2px;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .utilities {
+    margin-left: auto;
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .brand {
+    flex: 1;
+  }
+}

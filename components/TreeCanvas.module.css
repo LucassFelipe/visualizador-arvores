@@ -1,0 +1,399 @@
+.canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 1px 1px, #deded8 1px, transparent 0),
+    radial-gradient(
+      ellipse 80% 70% at 50% 38%,
+      rgba(255, 255, 255, 0.92),
+      transparent 72%
+    );
+  background-size:
+    22px 22px,
+    100% 100%;
+}
+
+.dragging {
+  cursor: grabbing;
+}
+
+.world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.worldAnimating {
+  transition: transform 0.42s var(--ease-out);
+}
+
+/* ------------------------------------------------------------------ */
+/* Arestas                                                             */
+/* ------------------------------------------------------------------ */
+
+.edge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--border-strong);
+  opacity: 0.82;
+  pointer-events: none;
+  transform-origin: 0 50%;
+  transition:
+    background-color 0.2s ease,
+    opacity 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.edgeHighlighted {
+  background: var(--accent);
+  opacity: 1;
+  box-shadow: 0 0 9px rgba(79, 70, 229, 0.3);
+}
+
+/* ------------------------------------------------------------------ */
+/* Nós                                                                 */
+/* ------------------------------------------------------------------ */
+
+.nodeWrap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+
+.node {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 640;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  box-shadow:
+    var(--shadow-node),
+    inset 0 1px 0 #ffffff;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s var(--ease-out);
+}
+
+.node:hover {
+  transform: scale(1.055);
+  border-color: var(--accent-border);
+  box-shadow:
+    0 0 0 4px var(--accent-soft),
+    var(--shadow-node);
+  z-index: 1;
+}
+
+.node:active {
+  transform: scale(0.985);
+}
+
+.nodeValue {
+  line-height: 1;
+  transform: translateY(-0.5px);
+  transition: transform 0.18s var(--ease-spring);
+}
+
+.node[data-visited="true"] {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.node[data-path="true"] {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+}
+
+.node[data-selected="true"] {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 4px var(--accent-soft),
+    var(--shadow-node);
+}
+
+.node[data-active="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+  box-shadow:
+    0 0 0 5px var(--accent-soft),
+    0 16px 32px -16px rgba(79, 70, 229, 0.6);
+}
+
+.node[data-active="true"] .nodeValue {
+  transform: translateY(-0.5px) scale(1.04);
+}
+
+.node[data-compare="left"],
+.node[data-compare="right"],
+.node[data-compare="equal"] {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+  color: var(--warning);
+  box-shadow:
+    0 0 0 5px rgba(217, 119, 6, 0.13),
+    var(--shadow-node);
+}
+
+.node[data-found="true"] {
+  border-color: var(--success);
+  background: var(--success);
+  color: #ffffff;
+  box-shadow:
+    0 0 0 5px var(--success-soft),
+    0 16px 32px -16px rgba(5, 150, 105, 0.6);
+}
+
+.node[data-active="true"]::after,
+.node[data-found="true"]::after,
+.node[data-compare="left"]::after,
+.node[data-compare="right"]::after,
+.node[data-compare="equal"]::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.35;
+  pointer-events: none;
+  animation: nodePulse 1.5s ease-out infinite;
+}
+
+@keyframes nodePulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.4;
+  }
+  70% {
+    transform: scale(1.16);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.16);
+    opacity: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Slots de adição                                                     */
+/* ------------------------------------------------------------------ */
+
+.addSlot {
+  position: absolute;
+  top: 55px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--accent-border);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface) 90%, var(--accent-soft));
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  z-index: 6;
+  transition:
+    transform 0.16s var(--ease-spring),
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.addSlot:hover {
+  transform: scale(1.12);
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.addLeft {
+  left: -18px;
+}
+
+.addRight {
+  right: -18px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Controles flutuantes                                                */
+/* ------------------------------------------------------------------ */
+
+.zoomControls {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-sm);
+}
+
+.zoomValue {
+  min-width: 42px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.zoomDivider {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--border);
+}
+
+.hint {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(8px);
+  color: var(--muted);
+  font-size: 11px;
+  box-shadow: var(--shadow-xs);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Estado vazio                                                        */
+/* ------------------------------------------------------------------ */
+
+.empty {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.empty > * {
+  pointer-events: auto;
+}
+
+.emptyMark {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--accent-border);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, var(--accent-soft) 100%);
+  color: var(--accent);
+  box-shadow:
+    var(--shadow-md),
+    inset 0 1px 0 #ffffff;
+}
+
+.emptyMarkLoading {
+  animation: breathe 1.6s ease-in-out infinite;
+}
+
+.emptyTitle {
+  margin-top: 2px;
+  font-size: 20px;
+  font-weight: 660;
+  letter-spacing: -0.03em;
+}
+
+.emptyLead {
+  max-width: 350px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.emptyLead strong {
+  color: var(--ink-soft);
+  font-weight: 620;
+}
+
+.emptyHint {
+  margin-top: 2px;
+  color: var(--muted-2);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.62;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 900px) {
+  .hint {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .zoomControls {
+    top: 10px;
+    right: 10px;
+  }
+
+  .emptyMark {
+    width: 56px;
+    height: 56px;
+    border-radius: 17px;
+  }
+
+  .emptyTitle {
+    font-size: 18px;
+  }
+
+  .emptyLead {
+    font-size: 13px;
+  }
+}

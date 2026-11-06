@@ -1,33 +1,30 @@
 "use client";
 
+import { TreeProvider } from "@/hooks/useTreeStore";
+import { SidePanel } from "./SidePanel";
+import { StepPlayer } from "./StepPlayer";
+import { Toast } from "./Toast";
+import { TopBar } from "./TopBar";
+import { TreeCanvas } from "./TreeCanvas";
 import styles from "./TreeWorkspace.module.css";
 
 export function TreeWorkspace() {
   return (
-    <main className={styles.app}>
-      <header className={styles.header}>
-        <div className={styles.brand}>
-          <span className={styles.brandMark} aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
-          <span>
-            <strong>Árvore Binária</strong>
-            <small>Visualizador de BST</small>
-          </span>
+    <TreeProvider>
+      <main className={styles.app}>
+        <TopBar />
+        <div className={styles.workspace}>
+          <section
+            className={styles.canvasArea}
+            aria-label="Área de visualização da árvore"
+          >
+            <TreeCanvas />
+            <StepPlayer />
+          </section>
+          <SidePanel />
         </div>
-      </header>
-      <div className={styles.workspace}>
-        <section className={styles.canvasArea}>
-          <div className={styles.canvasPlaceholder}>
-            <p>Canvas em construção</p>
-          </div>
-        </section>
-        <aside className={styles.sidebar}>
-          <div className={styles.placeholderCard}>Métricas</div>
-        </aside>
-      </div>
-    </main>
+        <Toast />
+      </main>
+    </TreeProvider>
   );
 }

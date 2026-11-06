@@ -1,0 +1,96 @@
+.viewport {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  width: min(440px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  width: 100%;
+  padding: 10px 10px 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-float);
+  pointer-events: auto;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--surface-strong);
+  color: var(--muted);
+}
+
+.text {
+  flex: 1;
+  padding-top: 2px;
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 6px;
+  color: var(--muted-2);
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.close:hover {
+  background: var(--surface-strong);
+  color: var(--ink);
+}
+
+.info .icon {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.success {
+  border-color: var(--success-border);
+}
+
+.success .icon {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.error {
+  border-color: var(--danger-border);
+}
+
+.error .icon {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.error .text {
+  color: var(--ink);
+}
+
+@media (max-width: 860px) {
+  .viewport {
+    bottom: 16px;
+  }
+}
