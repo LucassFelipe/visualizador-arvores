@@ -20,6 +20,8 @@ export type IconName =
   | "alert"
   | "info"
   | "pencil"
+  | "sun"
+  | "moon"
   | "arrowLeft"
   | "arrowRight"
   | "chevronDown"
@@ -133,6 +135,13 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
     </>
   ),
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+    </>
+  ),
+  moon: <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />,
   arrowLeft: (
     <>
       <path d="M19 12H5" />

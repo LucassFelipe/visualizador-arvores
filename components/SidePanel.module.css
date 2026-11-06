@@ -6,7 +6,7 @@
   padding: 18px;
   overflow-y: auto;
   border-left: 1px solid var(--border);
-  background: linear-gradient(180deg, #fafaf8 0%, #f6f6f3 100%);
+  background: linear-gradient(180deg, var(--sidebar-from) 0%, var(--sidebar-to) 100%);
 }
 
 .card {
@@ -219,9 +219,9 @@
 
 .traversalButton[data-active="true"] {
   border-color: var(--accent);
-  background: var(--accent);
-  color: #ffffff;
-  box-shadow: 0 10px 20px -14px rgba(79, 70, 229, 0.75);
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+  box-shadow: 0 10px 20px -14px var(--accent-glow);
 }
 
 .traversalKey {
@@ -239,8 +239,8 @@
 }
 
 .traversalButton[data-active="true"] .traversalKey {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background: var(--on-accent-soft);
+  color: var(--accent-ink);
 }
 
 .traversalLabel {
@@ -291,10 +291,10 @@
 
 .chipCurrent {
   border-color: var(--accent);
-  background: var(--accent);
-  color: #ffffff;
+  background: var(--accent-fill);
+  color: var(--accent-ink);
   transform: translateY(-1px);
-  box-shadow: 0 7px 14px -9px rgba(79, 70, 229, 0.75);
+  box-shadow: 0 7px 14px -9px var(--accent-glow);
 }
 
 .sequenceEmpty {

@@ -1,0 +1,16 @@
+.toggle {
+  color: var(--muted);
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    transform 0.2s var(--ease-out);
+}
+
+.toggle:hover {
+  background: var(--surface-strong);
+  color: var(--ink);
+}
+
+.toggle:active {
+  transform: rotate(-18deg) scale(0.94);
+}

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { parseInteger, useTreeActions } from "@/hooks/useTreeActions";
 import { Button, IconButton } from "./ui/Button";
 import { Icon } from "./ui/Icon";
+import { ThemeToggle } from "./ThemeToggle";
 import styles from "./TopBar.module.css";
 
 export function TopBar() {
@@ -152,6 +153,8 @@ export function TopBar() {
       </div>
 
       <div className={styles.utilities}>
+        <ThemeToggle />
+        <span className={styles.divider} aria-hidden="true" />
         <IconButton
           icon="undo"
           label="Desfazer (Ctrl+Z)"

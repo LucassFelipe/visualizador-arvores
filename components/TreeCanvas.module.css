@@ -8,10 +8,10 @@
   user-select: none;
   background-color: var(--bg);
   background-image:
-    radial-gradient(circle at 1px 1px, #deded8 1px, transparent 0),
+    radial-gradient(circle at 1px 1px, var(--grid-dot) 1px, transparent 0),
     radial-gradient(
       ellipse 80% 70% at 50% 38%,
-      rgba(255, 255, 255, 0.92),
+      var(--canvas-glow),
       transparent 72%
     );
   background-size:
@@ -58,7 +58,7 @@
 .edgeHighlighted {
   background: var(--accent);
   opacity: 1;
-  box-shadow: 0 0 9px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 0 9px var(--accent-glow-soft);
 }
 
 /* ------------------------------------------------------------------ */
@@ -88,7 +88,7 @@
   letter-spacing: -0.02em;
   box-shadow:
     var(--shadow-node),
-    inset 0 1px 0 #ffffff;
+    inset 0 1px 0 var(--inset-highlight);
   cursor: pointer;
   transition:
     border-color 0.18s ease,
@@ -136,11 +136,11 @@
 
 .node[data-active="true"] {
   border-color: var(--accent);
-  background: var(--accent);
-  color: #ffffff;
+  background: var(--accent-fill);
+  color: var(--accent-ink);
   box-shadow:
     0 0 0 5px var(--accent-soft),
-    0 16px 32px -16px rgba(79, 70, 229, 0.6);
+    0 16px 32px -16px var(--accent-glow);
 }
 
 .node[data-active="true"] .nodeValue {
@@ -154,17 +154,17 @@
   background: var(--warning-soft);
   color: var(--warning);
   box-shadow:
-    0 0 0 5px rgba(217, 119, 6, 0.13),
+    0 0 0 5px var(--warning-glow),
     var(--shadow-node);
 }
 
 .node[data-found="true"] {
   border-color: var(--success);
-  background: var(--success);
-  color: #ffffff;
+  background: var(--success-fill);
+  color: var(--success-ink);
   box-shadow:
     0 0 0 5px var(--success-soft),
-    0 16px 32px -16px rgba(5, 150, 105, 0.6);
+    0 16px 32px -16px var(--success-glow);
 }
 
 .node[data-active="true"]::after,
@@ -226,8 +226,8 @@
 .addSlot:hover {
   transform: scale(1.12);
   border-color: var(--accent);
-  background: var(--accent);
-  color: #ffffff;
+  background: var(--accent-fill);
+  color: var(--accent-ink);
 }
 
 .addLeft {
@@ -322,11 +322,11 @@
   height: 64px;
   border: 1px solid var(--accent-border);
   border-radius: 20px;
-  background: linear-gradient(180deg, #ffffff 0%, var(--accent-soft) 100%);
+  background: linear-gradient(180deg, var(--mark-from) 0%, var(--accent-soft) 100%);
   color: var(--accent);
   box-shadow:
     var(--shadow-md),
-    inset 0 1px 0 #ffffff;
+    inset 0 1px 0 var(--inset-highlight);
 }
 
 .emptyMarkLoading {

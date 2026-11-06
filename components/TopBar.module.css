@@ -25,11 +25,11 @@
   height: 40px;
   border: 1px solid var(--accent-border);
   border-radius: 12px;
-  background: linear-gradient(180deg, #ffffff 0%, var(--accent-soft) 100%);
+  background: linear-gradient(180deg, var(--mark-from) 0%, var(--accent-soft) 100%);
   color: var(--accent);
   box-shadow:
     var(--shadow-xs),
-    inset 0 1px 0 #ffffff;
+    inset 0 1px 0 var(--inset-highlight);
 }
 
 .brandText strong {
@@ -205,9 +205,20 @@
     margin-left: auto;
     border-left: 0;
     padding-left: 0;
+    gap: 0;
+  }
+
+  .utilities .divider {
+    margin: 0 2px;
   }
 
   .brand {
     flex: 1;
+    min-width: 0;
+  }
+
+  .brandText strong {
+    font-size: 14px;
+    white-space: nowrap;
   }
 }

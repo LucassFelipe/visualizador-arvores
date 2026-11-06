@@ -119,11 +119,11 @@
   margin: 0 3px;
   padding: 0;
   border-radius: 50%;
-  background: var(--accent);
-  color: #ffffff;
+  background: var(--accent-fill);
+  color: var(--accent-ink);
   box-shadow:
-    0 6px 14px -6px rgba(79, 70, 229, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    0 6px 14px -6px var(--accent-glow),
+    inset 0 1px 0 var(--on-accent-soft);
   transition:
     background-color 0.16s ease,
     transform 0.14s var(--ease-out),
@@ -131,7 +131,7 @@
 }
 
 .playButton:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--accent-fill-hover);
   transform: scale(1.06);
 }
 
@@ -146,7 +146,7 @@
 .isPlaying {
   box-shadow:
     0 0 0 4px var(--accent-soft),
-    0 6px 14px -6px rgba(79, 70, 229, 0.55);
+    0 6px 14px -6px var(--accent-glow);
 }
 
 .timeline {
@@ -203,7 +203,7 @@
   border: 2px solid var(--surface);
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 1px 4px rgba(79, 70, 229, 0.45);
+  box-shadow: 0 1px 4px var(--accent-glow);
   transition: transform 0.14s var(--ease-spring);
 }
 
@@ -213,7 +213,7 @@
   border: 2px solid var(--surface);
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 1px 4px rgba(79, 70, 229, 0.45);
+  box-shadow: 0 1px 4px var(--accent-glow);
 }
 
 .range:hover::-webkit-slider-thumb {
@@ -227,7 +227,7 @@
 .range:focus-visible::-webkit-slider-thumb {
   box-shadow:
     0 0 0 3px var(--accent-soft),
-    0 1px 4px rgba(79, 70, 229, 0.45);
+    0 1px 4px var(--accent-glow);
 }
 
 .speed {

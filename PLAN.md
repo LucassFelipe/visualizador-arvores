@@ -357,6 +357,7 @@ Cada fase termina com o app funcionando e um commit convencional.
 - [x] Undo/redo com histórico de 50 estados e atalhos `Ctrl/Cmd+Z` / `Ctrl/Cmd+Shift+Z`.
 - [x] Autosave em `localStorage` com debounce e restauração validada.
 - [x] Layout responsivo (sidebar à direita no desktop, painel inferior no mobile).
+- [x] Tema claro/escuro com toggle no cabeçalho, seguindo a preferência do sistema na primeira visita e persistindo a escolha em `localStorage`.
 - [x] `prefers-reduced-motion` respeitado nos pulsos e transições.
 - [x] 47 testes de lógica, typecheck e build de produção passando.
 - [x] QA funcional no navegador: inserção, duplicado, busca, 3 casos de remoção, percursos, edição, undo/redo, autosave e limpeza.
