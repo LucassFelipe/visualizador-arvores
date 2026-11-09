@@ -8,14 +8,30 @@ import {
   type Dispatch,
   type ReactNode,
 } from "react";
-import { BASE_STEP_DELAY, MAX_HISTORY } from "@/lib/constants";
-import { loadStoredTree, saveStoredTree } from "@/lib/persistence";
-import type { Notice, Playback, Step, TraversalOrder, Tree } from "@/lib/types";
+import {
+  BASE_STEP_DELAY,
+  MAX_HISTORY,
+  isMultiwayKind,
+} from "@/lib/constants";
+import { loadStoredState, saveStoredState } from "@/lib/persistence";
+import type {
+  BTree,
+  BinaryKind,
+  BinaryStructure,
+  MultiwayKind,
+  MultiwayStructure,
+  Notice,
+  Playback,
+  Step,
+  TraversalOrder,
+  Tree,
+  TreeKind,
+} from "@/lib/types";
 
 export interface AppState {
-  tree: Tree;
-  past: Tree[];
-  future: Tree[];
+  kind: TreeKind;
+  binary: Record<BinaryKind, BinaryStructure>;
+  multiway: Record<MultiwayKind, MultiwayStructure>;
   playback: Playback | null;
   selectedId: string | null;
   editorMode: EditorMode;
@@ -28,8 +44,21 @@ export interface AppState {
 export type EditorMode = "idle" | "edit" | "add-left" | "add-right";
 
 export type AppAction =
-  | { type: "hydrate"; tree: Tree; restored: boolean }
-  | { type: "apply"; tree: Tree; selectedId?: string | null; notice?: Notice }
+  | {
+      type: "hydrate";
+      kind: TreeKind;
+      binary: Record<BinaryKind, Tree>;
+      multiway: Record<MultiwayKind, BTree>;
+      restored: boolean;
+    }
+  | { type: "set-kind"; kind: TreeKind }
+  | { type: "apply-binary"; tree: Tree; selectedId?: string | null; notice?: Notice }
+  | {
+      type: "apply-multiway";
+      tree: BTree;
+      selectedId?: string | null;
+      notice?: Notice;
+    }
   | { type: "undo" }
   | { type: "redo" }
   | { type: "select"; id: string | null }
@@ -41,7 +70,9 @@ export type AppAction =
       title: string;
       kind: "operation" | "traversal";
       order: TraversalOrder | null;
-      commitTree?: Tree;
+      treeKind: TreeKind;
+      commitBinary?: Tree;
+      commitMultiway?: BTree;
     }
   | { type: "playback-index"; index: number }
   | { type: "playback-play" }
@@ -52,10 +83,13 @@ export type AppAction =
   | { type: "playback-close" }
   | { type: "set-autofit"; value: boolean };
 
+const emptyBinary = (): BinaryStructure => ({ tree: null, past: [], future: [] });
+const emptyMultiway = (): MultiwayStructure => ({ tree: null, past: [], future: [] });
+
 const initialState: AppState = {
-  tree: null,
-  past: [],
-  future: [],
+  kind: "bst",
+  binary: { bst: emptyBinary(), avl: emptyBinary() },
+  multiway: { b: emptyMultiway(), bstar: emptyMultiway(), bplus: emptyMultiway() },
   playback: null,
   selectedId: null,
   editorMode: "idle",
@@ -69,47 +103,141 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function nextHistory<T>(
+  past: T[],
+  future: T[],
+  current: T,
+  next: T,
+): { past: T[]; future: T[] } {
+  if (current === next) return { past, future };
+  return { past: [current, ...past].slice(0, MAX_HISTORY), future: [] };
+}
+
 export function treeReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case "hydrate":
       return {
         ...state,
-        tree: action.tree,
+        kind: action.kind,
+        binary: {
+          bst: { tree: action.binary.bst, past: [], future: [] },
+          avl: { tree: action.binary.avl, past: [], future: [] },
+        },
+        multiway: {
+          b: { tree: action.multiway.b, past: [], future: [] },
+          bstar: { tree: action.multiway.bstar, past: [], future: [] },
+          bplus: { tree: action.multiway.bplus, past: [], future: [] },
+        },
         hydrated: true,
         editorMode: "idle",
         notice: action.restored
-          ? {
-              tone: "info",
-              text: "Árvore restaurada do armazenamento local.",
-            }
+          ? { tone: "info", text: "Estruturas restauradas do armazenamento local." }
           : null,
       };
 
-    case "apply": {
-      const changed = action.tree !== state.tree;
+    case "set-kind": {
+      if (action.kind === state.kind) return state;
       return {
         ...state,
-        tree: action.tree,
-        past: changed
-          ? [state.tree, ...state.past].slice(0, MAX_HISTORY)
-          : state.past,
-        future: changed ? [] : state.future,
+        kind: action.kind,
         playback: null,
-        selectedId:
-          action.selectedId === undefined ? null : action.selectedId,
+        selectedId: null,
+        editorMode: "idle",
+        notice: null,
+      };
+    }
+
+    case "apply-binary": {
+      if (isMultiwayKind(state.kind)) return state;
+      const binaryKind = state.kind as BinaryKind;
+      const current = state.binary[binaryKind];
+      if (current.tree === action.tree) {
+        return {
+          ...state,
+          selectedId:
+            action.selectedId === undefined ? null : action.selectedId,
+          editorMode: "idle",
+          notice: action.notice ?? state.notice,
+        };
+      }
+      const history = nextHistory(current.past, current.future, current.tree, action.tree);
+      return {
+        ...state,
+        binary: {
+          ...state.binary,
+          [binaryKind]: { tree: action.tree, ...history },
+        },
+        playback: null,
+        selectedId: action.selectedId === undefined ? null : action.selectedId,
+        editorMode: "idle",
+        notice: action.notice ?? state.notice,
+      };
+    }
+
+    case "apply-multiway": {
+      if (!isMultiwayKind(state.kind)) return state;
+      const multiwayKind = state.kind as MultiwayKind;
+      const current = state.multiway[multiwayKind];
+      if (current.tree === action.tree) {
+        return {
+          ...state,
+          selectedId:
+            action.selectedId === undefined ? null : action.selectedId,
+          editorMode: "idle",
+          notice: action.notice ?? state.notice,
+        };
+      }
+      const history = nextHistory(current.past, current.future, current.tree, action.tree);
+      return {
+        ...state,
+        multiway: {
+          ...state.multiway,
+          [multiwayKind]: { tree: action.tree, ...history },
+        },
+        playback: null,
+        selectedId: action.selectedId === undefined ? null : action.selectedId,
         editorMode: "idle",
         notice: action.notice ?? state.notice,
       };
     }
 
     case "undo": {
-      if (state.past.length === 0) return state;
-      const [previous, ...rest] = state.past;
+      if (isMultiwayKind(state.kind)) {
+        const kind = state.kind as MultiwayKind;
+        const current = state.multiway[kind];
+        if (current.past.length === 0) return state;
+        const [previous, ...rest] = current.past;
+        return {
+          ...state,
+          multiway: {
+            ...state.multiway,
+            [kind]: {
+              tree: previous,
+              past: rest,
+              future: [current.tree, ...current.future].slice(0, MAX_HISTORY),
+            },
+          },
+          playback: null,
+          selectedId: null,
+          editorMode: "idle",
+          notice: { tone: "info", text: "Alteração desfeita." },
+        };
+      }
+
+      const kind = state.kind as BinaryKind;
+      const current = state.binary[kind];
+      if (current.past.length === 0) return state;
+      const [previous, ...rest] = current.past;
       return {
         ...state,
-        tree: previous,
-        past: rest,
-        future: [state.tree, ...state.future].slice(0, MAX_HISTORY),
+        binary: {
+          ...state.binary,
+          [kind]: {
+            tree: previous,
+            past: rest,
+            future: [current.tree, ...current.future].slice(0, MAX_HISTORY),
+          },
+        },
         playback: null,
         selectedId: null,
         editorMode: "idle",
@@ -118,13 +246,42 @@ export function treeReducer(state: AppState, action: AppAction): AppState {
     }
 
     case "redo": {
-      if (state.future.length === 0) return state;
-      const [next, ...rest] = state.future;
+      if (isMultiwayKind(state.kind)) {
+        const kind = state.kind as MultiwayKind;
+        const current = state.multiway[kind];
+        if (current.future.length === 0) return state;
+        const [next, ...rest] = current.future;
+        return {
+          ...state,
+          multiway: {
+            ...state.multiway,
+            [kind]: {
+              tree: next,
+              past: [current.tree, ...current.past].slice(0, MAX_HISTORY),
+              future: rest,
+            },
+          },
+          playback: null,
+          selectedId: null,
+          editorMode: "idle",
+          notice: { tone: "info", text: "Alteração refeita." },
+        };
+      }
+
+      const kind = state.kind as BinaryKind;
+      const current = state.binary[kind];
+      if (current.future.length === 0) return state;
+      const [next, ...rest] = current.future;
       return {
         ...state,
-        tree: next,
-        past: [state.tree, ...state.past].slice(0, MAX_HISTORY),
-        future: rest,
+        binary: {
+          ...state.binary,
+          [kind]: {
+            tree: next,
+            past: [current.tree, ...current.past].slice(0, MAX_HISTORY),
+            future: rest,
+          },
+        },
         playback: null,
         selectedId: null,
         editorMode: "idle",
@@ -142,16 +299,47 @@ export function treeReducer(state: AppState, action: AppAction): AppState {
       return { ...state, notice: action.notice };
 
     case "start-playback": {
-      const commit = action.commitTree;
-      const hasCommit = commit !== undefined;
-      const changed = hasCommit && commit !== state.tree;
+      const multiway = isMultiwayKind(action.treeKind);
+      const hasBinaryCommit = action.commitBinary !== undefined;
+      const hasMultiwayCommit = action.commitMultiway !== undefined;
+      const binaryKind = multiway ? null : (action.treeKind as BinaryKind);
+      const multiwayKind = multiway ? (action.treeKind as MultiwayKind) : null;
+
+      let binary = state.binary;
+      let multiwayTrees = state.multiway;
+
+      if (binaryKind && hasBinaryCommit) {
+        const current = state.binary[binaryKind];
+        const history = nextHistory(
+          current.past,
+          current.future,
+          current.tree,
+          action.commitBinary!,
+        );
+        binary = {
+          ...state.binary,
+          [binaryKind]: { tree: action.commitBinary!, ...history },
+        };
+      }
+
+      if (multiwayKind && hasMultiwayCommit) {
+        const current = state.multiway[multiwayKind];
+        const history = nextHistory(
+          current.past,
+          current.future,
+          current.tree,
+          action.commitMultiway!,
+        );
+        multiwayTrees = {
+          ...state.multiway,
+          [multiwayKind]: { tree: action.commitMultiway!, ...history },
+        };
+      }
+
       return {
         ...state,
-        tree: hasCommit ? commit : state.tree,
-        past: changed
-          ? [state.tree, ...state.past].slice(0, MAX_HISTORY)
-          : state.past,
-        future: changed ? [] : state.future,
+        binary,
+        multiway: multiwayTrees,
         playback: {
           steps: action.steps,
           index: 0,
@@ -160,6 +348,7 @@ export function treeReducer(state: AppState, action: AppAction): AppState {
           kind: action.kind,
           title: action.title,
           order: action.order,
+          treeKind: action.treeKind,
         },
         selectedId: null,
         editorMode: "idle",
@@ -201,29 +390,19 @@ export function treeReducer(state: AppState, action: AppAction): AppState {
 
     case "playback-pause": {
       if (!state.playback) return state;
-      return {
-        ...state,
-        playback: { ...state.playback, playing: false },
-      };
+      return { ...state, playback: { ...state.playback, playing: false } };
     }
 
     case "playback-next": {
       if (!state.playback) return state;
       const last = state.playback.steps.length - 1;
       if (state.playback.index >= last) {
-        return {
-          ...state,
-          playback: { ...state.playback, playing: false },
-        };
+        return { ...state, playback: { ...state.playback, playing: false } };
       }
       const index = state.playback.index + 1;
       return {
         ...state,
-        playback: {
-          ...state.playback,
-          index,
-          playing: index < last,
-        },
+        playback: { ...state.playback, index, playing: index < last },
       };
     }
 
@@ -261,6 +440,59 @@ export function treeReducer(state: AppState, action: AppAction): AppState {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* Acessos derivados                                                   */
+/* ------------------------------------------------------------------ */
+
+export function currentBinary(state: AppState): BinaryStructure | null {
+  return isMultiwayKind(state.kind)
+    ? null
+    : state.binary[state.kind as BinaryKind];
+}
+
+export function currentMultiway(state: AppState): MultiwayStructure | null {
+  return isMultiwayKind(state.kind)
+    ? state.multiway[state.kind as MultiwayKind]
+    : null;
+}
+
+export function currentTree(state: AppState): Tree {
+  return currentBinary(state)?.tree ?? null;
+}
+
+export function currentBTree(state: AppState): BTree {
+  return currentMultiway(state)?.tree ?? null;
+}
+
+export function getDisplayedTree(state: AppState): Tree {
+  if (!state.playback || isMultiwayKind(state.playback.treeKind)) {
+    return currentTree(state);
+  }
+  const step = state.playback.steps[state.playback.index];
+  return step ? step.tree : currentTree(state);
+}
+
+export function getDisplayedBTree(state: AppState): BTree {
+  if (!state.playback || !isMultiwayKind(state.playback.treeKind)) {
+    return currentBTree(state);
+  }
+  const step = state.playback.steps[state.playback.index];
+  return step ? step.btree : currentBTree(state);
+}
+
+export function getCurrentStep(state: AppState): Step | null {
+  if (!state.playback) return null;
+  return state.playback.steps[state.playback.index] ?? null;
+}
+
+export function isCurrentTreeEmpty(state: AppState): boolean {
+  return isMultiwayKind(state.kind) ? currentBTree(state) === null : currentTree(state) === null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Provider                                                            */
+/* ------------------------------------------------------------------ */
+
 interface TreeStoreValue {
   state: AppState;
   dispatch: Dispatch<AppAction>;
@@ -272,10 +504,12 @@ export function TreeProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(treeReducer, initialState);
 
   useEffect(() => {
-    const stored = loadStoredTree();
+    const stored = loadStoredState();
     dispatch({
       type: "hydrate",
-      tree: stored,
+      kind: stored?.kind ?? "bst",
+      binary: stored?.binary ?? { bst: null, avl: null },
+      multiway: stored?.multiway ?? { b: null, bstar: null, bplus: null },
       restored: stored !== null,
     });
   }, []);
@@ -308,10 +542,18 @@ export function TreeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!state.hydrated) return;
     const timer = window.setTimeout(() => {
-      saveStoredTree(state.tree);
+      saveStoredState(
+        state.kind,
+        { bst: state.binary.bst.tree, avl: state.binary.avl.tree },
+        {
+          b: state.multiway.b.tree,
+          bstar: state.multiway.bstar.tree,
+          bplus: state.multiway.bplus.tree,
+        },
+      );
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [state.tree, state.hydrated]);
+  }, [state.kind, state.binary, state.multiway, state.hydrated]);
 
   return (
     <TreeStoreContext.Provider value={{ state, dispatch }}>
@@ -326,15 +568,4 @@ export function useTreeStore(): TreeStoreValue {
     throw new Error("useTreeStore precisa estar dentro de TreeProvider.");
   }
   return context;
-}
-
-export function getDisplayedTree(state: AppState): Tree {
-  if (!state.playback) return state.tree;
-  const step = state.playback.steps[state.playback.index];
-  return step ? step.tree : state.tree;
-}
-
-export function getCurrentStep(state: AppState): Step | null {
-  if (!state.playback) return null;
-  return state.playback.steps[state.playback.index] ?? null;
 }

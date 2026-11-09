@@ -7,7 +7,7 @@ export function SidePanel() {
   return (
     <aside
       className={styles.sidebar}
-      aria-label="Métricas, percursos e editor da árvore"
+      aria-label="Métricas, percursos e inspetor da estrutura"
     >
       <MetricsPanel />
       <TraversalPanel />

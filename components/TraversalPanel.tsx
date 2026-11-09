@@ -2,26 +2,33 @@
 
 import { useTreeActions } from "@/hooks/useTreeActions";
 import { countNodes } from "@/lib/bst";
-import { TRAVERSAL_LABELS, TRAVERSAL_SHORT } from "@/lib/constants";
+import { traverseB } from "@/lib/traversals";
+import {
+  KIND_INFO,
+  isMultiwayKind,
+  traversalLabels,
+  traversalShort,
+} from "@/lib/constants";
 import { cx } from "@/lib/cx";
-import type { TraversalOrder } from "@/lib/types";
+import type { MultiwayKind, TraversalOrder } from "@/lib/types";
 import { Icon } from "./ui/Icon";
 import styles from "./SidePanel.module.css";
 
-const ORDERS: TraversalOrder[] = [
-  "inorder",
-  "preorder",
-  "postorder",
-  "level",
-];
+const ORDERS: TraversalOrder[] = ["inorder", "preorder", "postorder", "level"];
 
 export function TraversalPanel() {
-  const { state, displayedTree, currentStep, traverse } = useTreeActions();
+  const { kind, displayedTree, displayedBTree, state, currentStep, traverse } =
+    useTreeActions();
 
+  const multiway = isMultiwayKind(kind);
+  const labels = traversalLabels(kind);
+  const shorts = traversalShort(kind);
   const activeOrder = state.playback?.order ?? null;
   const operationRunning = state.playback?.kind === "operation";
   const sequence = currentStep?.output ?? [];
-  const total = countNodes(displayedTree);
+  const total = multiway
+    ? traverseB(displayedBTree, activeOrder ?? "inorder", kind as MultiwayKind).length
+    : countNodes(displayedTree);
   const currentIndex =
     currentStep?.kind === "visit" ? sequence.length - 1 : -1;
 
@@ -53,18 +60,21 @@ export function TraversalPanel() {
               data-active={active || undefined}
               onClick={() => traverse(order)}
               disabled={operationRunning}
-              title={TRAVERSAL_LABELS[order]}
+              title={labels[order]}
             >
-              <span className={styles.traversalKey}>
-                {TRAVERSAL_SHORT[order]}
-              </span>
-              <span className={styles.traversalLabel}>
-                {TRAVERSAL_LABELS[order]}
-              </span>
+              <span className={styles.traversalKey}>{shorts[order]}</span>
+              <span className={styles.traversalLabel}>{labels[order]}</span>
             </button>
           );
         })}
       </div>
+
+      {kind === "bplus" ? (
+        <p className={styles.helpText} style={{ marginTop: 2 }}>
+          No B+, <strong>Folhas</strong> percorre a sequência ordenada; os
+          separadores internos aparecem apenas nos percursos estruturais.
+        </p>
+      ) : null}
 
       {sequence.length > 0 ? (
         <div
@@ -76,9 +86,7 @@ export function TraversalPanel() {
               key={`${index}-${value}`}
               className={cx(
                 styles.chip,
-                index === currentIndex
-                  ? styles.chipCurrent
-                  : styles.chipVisited,
+                index === currentIndex ? styles.chipCurrent : styles.chipVisited,
               )}
             >
               {value}
@@ -92,7 +100,7 @@ export function TraversalPanel() {
           ) : (
             <>
               Escolha um percurso para ver a{" "}
-              <strong>ordem de visita</strong>.
+              <strong>ordem de visita</strong> da árvore {KIND_INFO[kind].label}.
             </>
           )}
         </div>

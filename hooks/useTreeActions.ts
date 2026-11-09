@@ -1,5 +1,7 @@
 "use client";
 
+import { addAvlChildValue, editAvlNodeValue, removeAvl } from "@/lib/avl";
+import { findBNodeById } from "@/lib/btree";
 import {
   addChildValue,
   editNodeValue,
@@ -7,16 +9,28 @@ import {
   remove,
 } from "@/lib/bst";
 import {
-  insertOperation,
-  removeOperation,
-  searchOperation,
-  traversalOperation,
+  insertForKind,
+  removeForKind,
+  searchForKind,
+  traversalForKind,
 } from "@/lib/operations";
-import { buildSampleTree } from "@/lib/sample";
-import type { NoticeTone, TraversalOrder, Tree } from "@/lib/types";
+import { buildSampleAvlTree, buildSampleBTree, buildSampleTree } from "@/lib/sample";
+import type {
+  BTree,
+  NoticeTone,
+  TraversalOrder,
+  Tree,
+  TreeKind,
+} from "@/lib/types";
 import {
+  currentBTree,
+  currentBinary,
+  currentMultiway,
+  currentTree,
   getCurrentStep,
+  getDisplayedBTree,
   getDisplayedTree,
+  isCurrentTreeEmpty,
   useTreeStore,
 } from "./useTreeStore";
 
@@ -32,8 +46,14 @@ export function parseInteger(input: string): number | null {
 export function useTreeActions() {
   const { state, dispatch } = useTreeStore();
   const isBusy = state.playback !== null;
-  const selectedNode = findNodeById(state.tree, state.selectedId);
+  const binary = currentBinary(state);
+  const multiway = currentMultiway(state);
+  const tree = currentTree(state);
+  const btree = currentBTree(state);
+  const selectedNode = findNodeById(tree, state.selectedId);
+  const selectedBNode = findBNodeById(btree, state.selectedId);
   const displayedTree = getDisplayedTree(state);
+  const displayedBTree = getDisplayedBTree(state);
   const currentStep = getCurrentStep(state);
 
   const notify = (tone: NoticeTone, text: string) => {
@@ -44,56 +64,58 @@ export function useTreeActions() {
     dispatch({ type: "notice", notice: null });
   };
 
-  const insert = (value: number) => {
-    if (isBusy) return;
-    const operation = insertOperation(state.tree, value);
+  const startOperation = (
+    operation: ReturnType<typeof insertForKind>,
+  ) => {
     dispatch({
       type: "start-playback",
       steps: operation.steps,
       title: operation.title,
       kind: "operation",
       order: null,
-      commitTree:
-        operation.outcome === "success" ? operation.finalTree : undefined,
+      treeKind: operation.treeKind,
+      commitBinary:
+        operation.model === "binary" && operation.outcome === "success"
+          ? operation.finalTree
+          : undefined,
+      commitMultiway:
+        operation.model === "multiway" && operation.outcome === "success"
+          ? operation.finalBTree
+          : undefined,
     });
+  };
+
+  const insert = (value: number) => {
+    if (isBusy) return;
+    startOperation(insertForKind(state.kind, tree, btree, value));
   };
 
   const search = (value: number) => {
     if (isBusy) return;
-    const operation = searchOperation(state.tree, value);
-    dispatch({
-      type: "start-playback",
-      steps: operation.steps,
-      title: operation.title,
-      kind: "operation",
-      order: null,
-    });
+    startOperation(searchForKind(state.kind, tree, btree, value));
   };
 
   const removeValue = (value: number) => {
     if (isBusy) return;
-    const operation = removeOperation(state.tree, value);
-    dispatch({
-      type: "start-playback",
-      steps: operation.steps,
-      title: operation.title,
-      kind: "operation",
-      order: null,
-      commitTree:
-        operation.outcome === "success" ? operation.finalTree : undefined,
-    });
+    startOperation(removeForKind(state.kind, tree, btree, value));
   };
 
   const traverse = (order: TraversalOrder) => {
     if (state.playback?.kind === "operation") return;
-    const operation = traversalOperation(state.tree, order);
+    const operation = traversalForKind(state.kind, tree, btree, order);
     dispatch({
       type: "start-playback",
       steps: operation.steps,
       title: operation.title,
       kind: "traversal",
       order,
+      treeKind: state.kind,
     });
+  };
+
+  const setKind = (kind: TreeKind) => {
+    if (isBusy || kind === state.kind) return;
+    dispatch({ type: "set-kind", kind });
   };
 
   const select = (id: string | null) => {
@@ -102,13 +124,17 @@ export function useTreeActions() {
   };
 
   const beginEdit = (id: string) => {
-    if (isBusy) return;
+    if (isBusy || state.kind === "b" || state.kind === "bstar" || state.kind === "bplus") {
+      return;
+    }
     dispatch({ type: "select", id });
     dispatch({ type: "editor-mode", mode: "edit" });
   };
 
   const beginAdd = (id: string, side: "left" | "right") => {
-    if (isBusy) return;
+    if (isBusy || state.kind === "b" || state.kind === "bstar" || state.kind === "bplus") {
+      return;
+    }
     dispatch({ type: "select", id });
     dispatch({
       type: "editor-mode",
@@ -126,18 +152,27 @@ export function useTreeActions() {
       notify("error", "Selecione um nó para editar.");
       return;
     }
-    const result = editNodeValue(state.tree, selectedNode.id, newValue);
+
+    const result =
+      state.kind === "avl"
+        ? editAvlNodeValue(tree, selectedNode.id, newValue)
+        : editNodeValue(tree, selectedNode.id, newValue);
+
     if (result.error) {
       notify("error", result.error);
       return;
     }
+
     dispatch({
-      type: "apply",
+      type: "apply-binary",
       tree: result.tree,
       selectedId: selectedNode.id,
       notice: {
         tone: "success",
-        text: `Subárvore de ${selectedNode.value} reconstruída com o valor ${newValue}.`,
+        text:
+          state.kind === "avl"
+            ? `Subárvore de ${selectedNode.value} rebalanceada com o valor ${newValue}.`
+            : `Subárvore de ${selectedNode.value} reconstruída com o valor ${newValue}.`,
       },
     });
   };
@@ -148,13 +183,19 @@ export function useTreeActions() {
       notify("error", "Selecione um nó para adicionar um filho.");
       return;
     }
-    const result = addChildValue(state.tree, selectedNode.id, side, value);
+
+    const result =
+      state.kind === "avl"
+        ? addAvlChildValue(tree, selectedNode.id, side, value)
+        : addChildValue(tree, selectedNode.id, side, value);
+
     if (result.error) {
       notify("error", result.error);
       return;
     }
+
     dispatch({
-      type: "apply",
+      type: "apply-binary",
       tree: result.tree,
       selectedId: result.nodeId,
       notice: {
@@ -167,13 +208,16 @@ export function useTreeActions() {
   const removeSelected = () => {
     if (isBusy) return;
     if (!selectedNode) return;
-    const result = remove(state.tree, selectedNode.value);
+    const result =
+      state.kind === "avl"
+        ? removeAvl(tree, selectedNode.value)
+        : remove(tree, selectedNode.value);
     if (!result.removed) {
       notify("error", "Nó não encontrado.");
       return;
     }
     dispatch({
-      type: "apply",
+      type: "apply-binary",
       tree: result.tree,
       selectedId: null,
       notice: { tone: "success", text: `Nó ${selectedNode.value} removido.` },
@@ -181,23 +225,47 @@ export function useTreeActions() {
   };
 
   const clearTree = () => {
-    if (isBusy || state.tree === null) return;
+    if (isBusy || isCurrentTreeEmpty(state)) return;
+    if (state.kind === "bst" || state.kind === "avl") {
+      dispatch({
+        type: "apply-binary",
+        tree: null,
+        selectedId: null,
+        notice: { tone: "info", text: "Árvore limpa. Use Ctrl+Z para desfazer." },
+      });
+      return;
+    }
     dispatch({
-      type: "apply",
+      type: "apply-multiway",
       tree: null,
       selectedId: null,
-      notice: {
-        tone: "info",
-        text: "Árvore limpa. Use Ctrl+Z para desfazer.",
-      },
+      notice: { tone: "info", text: "Árvore limpa. Use Ctrl+Z para desfazer." },
     });
   };
 
   const loadSample = () => {
     if (isBusy) return;
+    if (state.kind === "bst") {
+      dispatch({
+        type: "apply-binary",
+        tree: buildSampleTree(),
+        selectedId: null,
+        notice: { tone: "success", text: "Árvore de exemplo carregada." },
+      });
+      return;
+    }
+    if (state.kind === "avl") {
+      dispatch({
+        type: "apply-binary",
+        tree: buildSampleAvlTree(),
+        selectedId: null,
+        notice: { tone: "success", text: "Árvore AVL de exemplo carregada." },
+      });
+      return;
+    }
     dispatch({
-      type: "apply",
-      tree: buildSampleTree(),
+      type: "apply-multiway",
+      tree: buildSampleBTree(state.kind),
       selectedId: null,
       notice: { tone: "success", text: "Árvore de exemplo carregada." },
     });
@@ -234,18 +302,30 @@ export function useTreeActions() {
     dispatch({ type: "set-autofit", value });
   };
 
+  const canUndo =
+    !isBusy && Boolean(binary ? binary.past.length > 0 : multiway && multiway.past.length > 0);
+  const canRedo =
+    !isBusy && Boolean(binary ? binary.future.length > 0 : multiway && multiway.future.length > 0);
+
   return {
     state,
+    kind: state.kind,
     isBusy,
+    tree,
+    btree,
     selectedNode,
+    selectedBNode,
     displayedTree,
+    displayedBTree,
     currentStep,
-    canUndo: state.past.length > 0 && !isBusy,
-    canRedo: state.future.length > 0 && !isBusy,
+    isEmpty: isCurrentTreeEmpty(state),
+    canUndo,
+    canRedo,
     insert,
     search,
     removeValue,
     traverse,
+    setKind,
     select,
     beginEdit,
     beginAdd,
@@ -267,7 +347,8 @@ export function useTreeActions() {
     next,
     prev,
     setAutoFit,
-    applyTree: (tree: Tree) =>
-      dispatch({ type: "apply", tree, selectedId: null }),
   };
 }
+
+export type TreeActions = ReturnType<typeof useTreeActions>;
+export type { Tree, BTree };

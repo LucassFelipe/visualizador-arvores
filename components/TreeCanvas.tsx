@@ -11,9 +11,10 @@ import {
 } from "react";
 import { useTreeActions } from "@/hooks/useTreeActions";
 import { cx } from "@/lib/cx";
-import { MAX_ZOOM, MIN_ZOOM } from "@/lib/constants";
-import { layoutTree } from "@/lib/layout";
-import type { Tree, TreeNode as TreeNodeModel } from "@/lib/types";
+import { KIND_INFO, MAX_ZOOM, MIN_ZOOM, isMultiwayKind } from "@/lib/constants";
+import { layoutBTree, layoutTree } from "@/lib/layout";
+import type { Tree, TreeNode as TreeNodeModel, TreeKind } from "@/lib/types";
+import { BTreeNode } from "./BTreeNode";
 import { TreeEdge } from "./TreeEdge";
 import { TreeNode } from "./TreeNode";
 import { Button, IconButton } from "./ui/Button";
@@ -34,8 +35,10 @@ interface DragState {
 export function TreeCanvas() {
   const {
     state,
+    kind,
     isBusy,
     displayedTree,
+    displayedBTree,
     currentStep,
     select,
     beginEdit,
@@ -46,13 +49,31 @@ export function TreeCanvas() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
+  const multiway = isMultiwayKind(kind);
 
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [view, setView] = useState({ x: 0, y: 0, zoom: 1 });
   const [dragging, setDragging] = useState(false);
   const [animatingView, setAnimatingView] = useState(true);
 
-  const layout = useMemo(() => layoutTree(displayedTree), [displayedTree]);
+  const binaryLayout = useMemo(
+    () => (multiway ? null : layoutTree(displayedTree)),
+    [multiway, displayedTree],
+  );
+  const multiwayLayout = useMemo(
+    () => (multiway ? layoutBTree(displayedBTree, kind) : null),
+    [multiway, displayedBTree, kind],
+  );
+
+  const layoutWidth = multiway
+    ? (multiwayLayout?.width ?? 0)
+    : (binaryLayout?.width ?? 0);
+  const layoutHeight = multiway
+    ? (multiwayLayout?.height ?? 0)
+    : (binaryLayout?.height ?? 0);
+  const hasTree = multiway
+    ? (multiwayLayout?.nodes.length ?? 0) > 0
+    : (binaryLayout?.nodes.length ?? 0) > 0;
 
   const treeNodes = useMemo(() => {
     const map = new Map<string, TreeNodeModel>();
@@ -100,24 +121,17 @@ export function TreeCanvas() {
     (animate = true) => {
       if (size.width <= 0 || size.height <= 0) return;
 
-      if (layout.nodes.length === 0 || layout.width <= 0 || layout.height <= 0) {
+      if (!hasTree || layoutWidth <= 0 || layoutHeight <= 0) {
         setAnimatingView(animate);
         setView({ x: 0, y: 0, zoom: 1 });
         return;
       }
 
-      const padding = clamp(
-        Math.min(size.width, size.height) * 0.12,
-        44,
-        92,
-      );
+      const padding = clamp(Math.min(size.width, size.height) * 0.12, 44, 92);
       const availableWidth = Math.max(1, size.width - padding * 2);
       const availableHeight = Math.max(1, size.height - padding * 2);
       const zoom = clamp(
-        Math.min(
-          availableWidth / layout.width,
-          availableHeight / layout.height,
-        ),
+        Math.min(availableWidth / layoutWidth, availableHeight / layoutHeight),
         MIN_ZOOM,
         1.1,
       );
@@ -125,11 +139,11 @@ export function TreeCanvas() {
       setAnimatingView(animate);
       setView({
         zoom,
-        x: (size.width - layout.width * zoom) / 2,
-        y: (size.height - layout.height * zoom) / 2,
+        x: (size.width - layoutWidth * zoom) / 2,
+        y: (size.height - layoutHeight * zoom) / 2,
       });
     },
-    [size.width, size.height, layout.width, layout.height, layout.nodes.length],
+    [size.width, size.height, layoutWidth, layoutHeight, hasTree],
   );
 
   useEffect(() => {
@@ -230,8 +244,8 @@ export function TreeCanvas() {
     fitToView(true);
   };
 
-  const hasTree = layout.nodes.length > 0;
   const showHint = hasTree && !state.playback;
+  const info = KIND_INFO[kind];
 
   return (
     <div
@@ -241,7 +255,7 @@ export function TreeCanvas() {
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      aria-label="Visualização da árvore binária"
+      aria-label={`Visualização da árvore ${info.label}`}
     >
       {hasTree ? (
         <div className={styles.zoomControls} data-interactive>
@@ -281,62 +295,82 @@ export function TreeCanvas() {
 
       {hasTree ? (
         <div
-          className={cx(
-            styles.world,
-            animatingView && styles.worldAnimating,
-          )}
+          className={cx(styles.world, animatingView && styles.worldAnimating)}
           style={{
-            width: layout.width,
-            height: layout.height,
+            width: layoutWidth,
+            height: layoutHeight,
             transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`,
           }}
         >
           <AnimatePresence initial={false}>
-            {layout.edges.map((edge) => (
+            {(multiway ? multiwayLayout!.edges : binaryLayout!.edges).map((edge) => (
               <TreeEdge
                 key={edge.id}
                 edge={edge}
                 highlighted={
-                  pathIds.has(edge.parentId) && pathIds.has(edge.childId)
+                  edge.variant !== "leaf-link" &&
+                  pathIds.has(edge.parentId) &&
+                  pathIds.has(edge.childId)
                 }
               />
             ))}
           </AnimatePresence>
 
-          <AnimatePresence>
-            {layout.nodes.map((node) => {
-              const actual = treeNodes.get(node.id);
-              const active = activeIds.has(node.id);
-              return (
-                <TreeNode
-                  key={node.id}
-                  node={node}
-                  selected={state.selectedId === node.id}
-                  active={active}
-                  compare={active ? currentStep?.compare : undefined}
-                  found={
-                    currentStep?.kind === "found" && activeIds.has(node.id)
-                  }
-                  visited={visitedIds.has(node.id)}
-                  onPath={pathIds.has(node.id)}
-                  disabled={isBusy}
-                  showAddSlots={
-                    state.selectedId === node.id &&
-                    state.editorMode === "idle" &&
-                    !isBusy
-                  }
-                  hasLeft={Boolean(actual?.left)}
-                  hasRight={Boolean(actual?.right)}
-                  onSelect={select}
-                  onBeginEdit={beginEdit}
-                  onBeginAdd={beginAdd}
-                />
-              );
-            })}
+          <AnimatePresence mode={multiway ? "sync" : undefined}>
+            {multiway
+              ? multiwayLayout!.nodes.map((node) => {
+                  const active = activeIds.has(node.id);
+                  return (
+                    <BTreeNode
+                      key={node.id}
+                      node={node}
+                      selected={state.selectedId === node.id}
+                      active={active}
+                      compare={active ? currentStep?.compare : undefined}
+                      found={
+                        currentStep?.kind === "found" && activeIds.has(node.id)
+                      }
+                      visited={visitedIds.has(node.id)}
+                      onPath={pathIds.has(node.id)}
+                      disabled={isBusy}
+                      onSelect={select}
+                    />
+                  );
+                })
+              : binaryLayout!.nodes.map((node) => {
+                  const actual = treeNodes.get(node.id);
+                  const active = activeIds.has(node.id);
+                  return (
+                    <TreeNode
+                      key={node.id}
+                      node={node}
+                      selected={state.selectedId === node.id}
+                      active={active}
+                      compare={active ? currentStep?.compare : undefined}
+                      found={
+                        currentStep?.kind === "found" && activeIds.has(node.id)
+                      }
+                      visited={visitedIds.has(node.id)}
+                      onPath={pathIds.has(node.id)}
+                      disabled={isBusy}
+                      showAddSlots={
+                        state.selectedId === node.id &&
+                        state.editorMode === "idle" &&
+                        !isBusy
+                      }
+                      hasLeft={Boolean(actual?.left)}
+                      hasRight={Boolean(actual?.right)}
+                      onSelect={select}
+                      onBeginEdit={beginEdit}
+                      onBeginAdd={beginAdd}
+                    />
+                  );
+                })}
           </AnimatePresence>
         </div>
       ) : (
         <EmptyState
+          kind={kind}
           hydrated={state.hydrated}
           disabled={isBusy}
           onSample={loadSample}
@@ -347,14 +381,18 @@ export function TreeCanvas() {
 }
 
 function EmptyState({
+  kind,
   hydrated,
   disabled,
   onSample,
 }: {
+  kind: TreeKind;
   hydrated: boolean;
   disabled: boolean;
   onSample: () => void;
 }) {
+  const info = KIND_INFO[kind];
+
   if (!hydrated) {
     return (
       <div className={styles.empty} aria-busy="true">
@@ -371,10 +409,10 @@ function EmptyState({
       <div className={styles.emptyMark} aria-hidden="true">
         <Icon name="tree" size={30} />
       </div>
-      <h2 className={styles.emptyTitle}>Sua árvore começa aqui</h2>
+      <h2 className={styles.emptyTitle}>Sua árvore {info.label} começa aqui</h2>
       <p className={styles.emptyLead}>
-        Digite um valor e clique em <strong>Inserir</strong>. Os nós se
-        organizam sozinhos na posição certa.
+        Digite um valor e clique em <strong>Inserir</strong>. A estrutura se
+        organiza sozinha e mostra cada ajuste passo a passo.
       </p>
       <Button
         variant="secondary"
@@ -385,7 +423,7 @@ function EmptyState({
         Carregar exemplo
       </Button>
       <span className={styles.emptyHint}>
-        Valores únicos · BST · animações passo a passo
+        Valores únicos · {info.description} · animações passo a passo
       </span>
     </div>
   );

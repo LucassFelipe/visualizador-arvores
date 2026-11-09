@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { balanceFactor } from "@/lib/avl";
+import { heightOfB, getPathToBNodeId, isLeaf } from "@/lib/btree";
 import {
   ancestorBounds,
   formatInterval,
   getPathToNodeId,
 } from "@/lib/bst";
+import { BTREE_MAX_KEYS, KIND_INFO, isMultiwayKind } from "@/lib/constants";
 import { cx } from "@/lib/cx";
 import { parseInteger, useTreeActions } from "@/hooks/useTreeActions";
 import { Button, IconButton } from "./ui/Button";
@@ -15,8 +18,12 @@ import styles from "./SidePanel.module.css";
 export function InspectorPanel() {
   const {
     state,
+    kind,
     isBusy,
+    tree,
+    btree,
     selectedNode,
+    selectedBNode,
     select,
     beginEdit,
     beginAdd,
@@ -33,6 +40,8 @@ export function InspectorPanel() {
 
   const mode = state.editorMode;
   const selectedId = selectedNode?.id ?? null;
+  const multiway = isMultiwayKind(kind);
+  const info = KIND_INFO[kind];
 
   useEffect(() => {
     setInput("");
@@ -48,6 +57,108 @@ export function InspectorPanel() {
     cardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [mode]);
 
+  if (multiway) {
+    if (!selectedBNode) {
+      return (
+        <section className={styles.card} aria-labelledby="inspector-hint-title">
+          <div className={styles.cardHeader}>
+            <h2 className={styles.cardTitle} id="inspector-hint-title">
+              <Icon name="search" size={14} />
+              Inspetor de nós
+            </h2>
+            <span className={cx(styles.badge, styles.badgeNeutral)}>
+              somente leitura
+            </span>
+          </div>
+          <p className={styles.helpText}>
+            Clique em um nó para ver suas chaves, profundidade e filhos. Na{" "}
+            <strong>{info.label}</strong>, a edição livre fica desativada: use a
+            barra superior para inserir, buscar e remover valores.
+          </p>
+          <div className={styles.legend} aria-label="Legenda de cores">
+            <span className={styles.legendItem}>
+              <span className={cx(styles.legendDot, styles.legendPath)} />
+              Caminho
+            </span>
+            <span className={styles.legendItem}>
+              <span className={cx(styles.legendDot, styles.legendCompare)} />
+              Comparação
+            </span>
+            <span className={styles.legendItem}>
+              <span className={cx(styles.legendDot, styles.legendFound)} />
+              Encontrado
+            </span>
+          </div>
+          <div className={styles.shortcuts}>
+            No B+, as folhas guardam os valores e os nós internos guardam
+            separadores.
+          </div>
+        </section>
+      );
+    }
+
+    const path = getPathToBNodeId(btree, selectedBNode.id);
+    const depth = Math.max(0, path.length - 1);
+    const leaf = isLeaf(selectedBNode);
+
+    return (
+      <section ref={cardRef} className={styles.card} aria-labelledby="inspector-title">
+        <div className={styles.inspectorHeader}>
+          <span className={styles.nodeBadge}>
+            {selectedBNode.keys.join("·")}
+          </span>
+          <div>
+            <h2 className={styles.inspectorTitle} id="inspector-title">
+              Nó selecionado
+            </h2>
+            <p className={styles.inspectorSubtitle}>
+              Profundidade {depth} · {leaf ? "folha" : "nó interno"}
+            </p>
+          </div>
+          <IconButton
+            icon="close"
+            label="Fechar inspetor"
+            size="sm"
+            className={styles.closeButton}
+            onClick={() => select(null)}
+          />
+        </div>
+
+        <div className={styles.infoRows}>
+          <div className={styles.infoRow}>
+            <span className={styles.infoLabel}>Chaves</span>
+            <span className={cx(styles.infoValue, styles.infoWrap)}>
+              {selectedBNode.keys.join(", ")}
+            </span>
+          </div>
+          <div className={styles.infoRow}>
+            <span className={styles.infoLabel}>Filhos</span>
+            <span className={styles.infoValue}>
+              {selectedBNode.children.length === 0
+                ? "—"
+                : selectedBNode.children.length}
+            </span>
+          </div>
+          <div className={styles.infoRow}>
+            <span className={styles.infoLabel}>Altura da subárvore</span>
+            <span className={styles.infoValue}>{heightOfB(selectedBNode)}</span>
+          </div>
+          <div className={styles.infoRow}>
+            <span className={styles.infoLabel}>Ocupação</span>
+            <span className={styles.infoValue}>
+              {selectedBNode.keys.length} de até {BTREE_MAX_KEYS} chaves
+            </span>
+          </div>
+        </div>
+
+        <p className={styles.helpText} style={{ marginTop: 12 }}>
+          Inspetor somente leitura. Para alterar a estrutura, insira ou remova
+          valores pela barra superior.
+        </p>
+      </section>
+    );
+  }
+
   if (!selectedNode || isBusy) {
     return (
       <section className={styles.card} aria-labelledby="inspector-hint-title">
@@ -61,6 +172,9 @@ export function InspectorPanel() {
           Clique em um nó para selecionar. <strong>Duplo clique</strong> abre a
           edição do valor, e os botões <strong>+</strong> ao redor do nó criam
           filhos.
+          {kind === "avl"
+            ? " Na AVL, cada alteração é seguida de rebalanceamento automático."
+            : ""}
         </p>
         <div className={styles.legend} aria-label="Legenda de cores">
           <span className={styles.legendItem}>
@@ -85,10 +199,11 @@ export function InspectorPanel() {
     );
   }
 
-  const path = getPathToNodeId(state.tree, selectedNode.id);
+  const path = getPathToNodeId(tree, selectedNode.id);
   const bounds = ancestorBounds(path);
   const depth = Math.max(0, path.length - 1);
   const leaf = !selectedNode.left && !selectedNode.right;
+  const factor = balanceFactor(selectedNode);
 
   const formBounds =
     mode === "add-left"
@@ -163,6 +278,13 @@ export function InspectorPanel() {
           <span className={styles.infoLabel}>Limites</span>
           <span className={cx(styles.infoValue, styles.infoWrap)}>
             {formatInterval(bounds.lower, bounds.upper)}
+          </span>
+        </div>
+        <div className={styles.infoRow}>
+          <span className={styles.infoLabel}>Fator de balanceamento</span>
+          <span className={styles.infoValue}>
+            {factor > 0 ? "+" : ""}
+            {factor}
           </span>
         </div>
       </div>
@@ -240,7 +362,11 @@ export function InspectorPanel() {
           />
           <p className={styles.fieldHint} id="editor-range">
             Permitido: {formatInterval(formBounds.lower, formBounds.upper)}
-            {mode === "edit" ? " · a subárvore será reconstruída." : "."}
+            {mode === "edit"
+              ? kind === "avl"
+                ? " · a subárvore será reconstruída e rebalanceada."
+                : " · a subárvore será reconstruída."
+              : "."}
           </p>
           {error ? (
             <p className={styles.fieldError} role="alert">

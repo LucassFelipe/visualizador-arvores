@@ -13,7 +13,11 @@ interface TreeEdgeProps {
 export function TreeEdge({ edge, highlighted }: TreeEdgeProps) {
   return (
     <motion.div
-      className={cx(styles.edge, highlighted && styles.edgeHighlighted)}
+      className={cx(
+        styles.edge,
+        edge.variant === "leaf-link" && styles.edgeLeafLink,
+        highlighted && edge.variant !== "leaf-link" && styles.edgeHighlighted,
+      )}
       initial={{
         opacity: 0,
         width: edge.length,

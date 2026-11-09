@@ -222,3 +222,57 @@
     white-space: nowrap;
   }
 }
+
+.structureField {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  height: 38px;
+  padding: 0 9px 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.structureLabel {
+  color: var(--muted-2);
+  font-size: 10px;
+  font-weight: 620;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.structureSelect {
+  max-width: 76px;
+  padding: 2px 2px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 620;
+  cursor: pointer;
+}
+
+.structureSelect:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+@media (max-width: 960px) {
+  .structureField {
+    order: 2;
+  }
+}
+
+@media (max-width: 620px) {
+  .structureField {
+    margin-left: 0;
+  }
+
+  .structureLabel {
+    display: none;
+  }
+}

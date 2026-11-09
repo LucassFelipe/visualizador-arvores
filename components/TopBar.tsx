@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { parseInteger, useTreeActions } from "@/hooks/useTreeActions";
+import { KIND_INFO, TREE_KINDS } from "@/lib/constants";
+import type { TreeKind } from "@/lib/types";
 import { Button, IconButton } from "./ui/Button";
 import { Icon } from "./ui/Icon";
 import { ThemeToggle } from "./ThemeToggle";
@@ -9,14 +11,16 @@ import styles from "./TopBar.module.css";
 
 export function TopBar() {
   const {
-    state,
+    kind,
     isBusy,
+    isEmpty,
     canUndo,
     canRedo,
     insert,
     search,
     removeValue,
     clearTree,
+    setKind,
     undo,
     redo,
     notify,
@@ -25,6 +29,10 @@ export function TopBar() {
   const [value, setValue] = useState("");
   const [confirmingClear, setConfirmingClear] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setConfirmingClear(false);
+  }, [kind]);
 
   useEffect(() => {
     if (!confirmingClear) return;
@@ -73,7 +81,7 @@ export function TopBar() {
   };
 
   const onClear = () => {
-    if (state.tree === null || isBusy) return;
+    if (isEmpty || isBusy) return;
     if (!confirmingClear) {
       setConfirmingClear(true);
       return;
@@ -89,10 +97,28 @@ export function TopBar() {
           <Icon name="tree" size={21} />
         </span>
         <span className={styles.brandText}>
-          <strong>Árvore Binária</strong>
-          <span>Visualizador de BST</span>
+          <strong>Árvore</strong>
+          <span>Visualizador de estruturas</span>
         </span>
       </div>
+
+      <label className={styles.structureField}>
+        <span className={styles.structureLabel}>Estrutura</span>
+        <select
+          className={styles.structureSelect}
+          value={kind}
+          onChange={(event) => setKind(event.target.value as TreeKind)}
+          disabled={isBusy}
+          aria-label="Escolher a estrutura de dados"
+          title={isBusy ? "Finalize a animação para trocar de estrutura" : KIND_INFO[kind].description}
+        >
+          {TREE_KINDS.map((item) => (
+            <option key={item} value={item}>
+              {KIND_INFO[item].label}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <div className={styles.controls}>
         <div className={styles.valueField}>
@@ -173,7 +199,7 @@ export function TopBar() {
           size="sm"
           icon={confirmingClear ? "alert" : "trash"}
           onClick={onClear}
-          disabled={state.tree === null || isBusy}
+          disabled={isEmpty || isBusy}
           title="Limpar a árvore"
         >
           {confirmingClear ? "Confirmar?" : "Limpar"}
