@@ -1,6 +1,6 @@
 # Visualizador de Árvores
 
-Interativo visualizador de **árvore de busca** — BST, AVL, B, B\* e B+ — com operações animadas **passo a passo**, percurssos, editor, painel de métricas, undo/redo e tema claro/escuro. Construído com Next.js 16, React 19 e TypeScript em modo estrito.
+Visualizador interativo de **árvore de busca** — BST, AVL, B, B\* e B+ — com operações animadas **passo a passo**, percursos, editor, painel de métricas, undo/redo e tema claro/escuro. Construído com Next.js 16, React 19 e TypeScript em modo estrito.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16.4.5-000000?logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19.3.1-61dafb?logo=react&logoColor=black)
@@ -67,7 +67,7 @@ Abra <http://localhost:3000> — se a porta estiver ocupada, use `npm run dev --
 ## Arquitetura
 
 ```
-app/          → layout (tema aplicado sem FOT) e página única
+app/          → layout (tema aplicado sem flash) e página única
 components/   → canvas da árvore, painéis, linha do tempo, tema (CSS Modules)
 hooks/        → useTreeStore (estado, histórico, playback) + useTreeActions
 lib/          → bst.ts (núcleo binário), avl.ts, btree.ts (ordem 4),
@@ -91,7 +91,7 @@ npm test
 # Tests      131 passed (131)
 ```
 
-A suíte cobre rotações AVL (LL/RR/LR/RL), invariantes das árvores B (inserção e remoção de 1..30 nas duas ordens, empréstimo, mesclagem e redistribuição B\*), separadores e ordem global de folhas do B+, layout sem sobreposição, métricas, percurssos, dispatchers por estrutura e a persistência (migração v1→v2 e payloads corrompidos).
+A suíte cobre rotações AVL (LL/RR/LR/RL), invariantes das árvores B (inserção e remoção de 1..30 nas duas ordens, empréstimo, mesclagem e redistribuição B\*), separadores e ordem global de folhas do B+, layout sem sobreposição, métricas, percursos, dispatchers por estrutura e a persistência (migração v1→v2 e payloads corrompidos).
 
 ## Licença
 
