@@ -1,4 +1,4 @@
-# Visualizador de Árvore Binária — Plano de Construção
+# Visualizador de Árvores — Plano de Construção
 
 > Documento vivo. Toda decisão de arquitetura, escopo e visual fica registrada aqui antes de ir para o código.
 
@@ -6,19 +6,20 @@
 
 ## 1. Objetivo
 
-Construir um visualizador interativo de **BST (árvore binária de busca)** com:
+Construir um visualizador interativo de **ávores de busca** com **BST, AVL, B, B\* e B+** (ordem 4):
 
-- Operações de **inserir, buscar e remover** animadas **passo a passo**.
-- **Traversals** animados: em-ordem, pré-ordem, pós-ordem e em nível (BFS).
-- **Editor livre**: selecionar nós, editar valores, adicionar/remover filhos.
-- **Painel de métricas** sempre atualizado.
-- Visual **clean/minimalista claro**, com animações e destaques bem cuidadosos.
+- Operações de **inserir, buscar e remover** animadas **passo a passo** em **todas** as estruturas.
+- **Traversals** animados adaptados por estrutura: em-ordem/pré/pós/em-nível para binárias e B/B\*; no B+ o "em-ordem" vira **Folhas** (varredura encadeada).
+- **Editor livre** para BST/AVL; **inspetor somente leitura** para a família B (estrutura derivada da chave, não editável à mão).
+- **Painel de métricas** por estrutura (nós internos, chaves, valores, ocupação, ordem).
+- Visual **clean/minimalista claro + escuro**, com animações e destaques bem cuidadosos.
 
 ### Não-objetivos (por enquanto)
 
-- AVL, Rubro-Negra, Heap e outros tipos de árvore.
+- Rubro-Negra, Heap e outros tipos de árvore.
 - Backend, contas de usuário ou banco de dados.
 - Import/export de arquivos (não foi selecionado no escopo inicial).
+- Árvores B com ordem configurável (ordem fixa em 4).
 
 ---
 
@@ -341,6 +342,15 @@ Cada fase termina com o app funcionando e um commit convencional.
 
 > Sem atalhos globais além de undo/redo. O restante da interação é por botões e navegação nativa por teclado.
 
+### Decisões das multi-estruturas
+
+5. **Modelo híbrido:** BST/AVL continuam com o binário `TreeNode` intocado (os 47 testes originais seguem verdes); B/B\*/B+ usam `BNode { id, keys, children }`. O `Step` carrega os dois snapshots (`tree` e `btree`) e `OperationResult` declara `model`, `treeKind`, `finalTree` e `finalBTree`.
+6. **Ordem fixa 4:** máx. 3 chaves/nó e 4 filhos. Mínimo 1 chave (não-raiz) para B e B+; B\* usa mínimo 1 (caso de raiz com poucas chaves) com viés de ocupação 2/3 e **redistribuição com o irmão antes de dividir**, mais divisão 2→3.
+7. **Métricas leem a árvore commitada:** durante o playback um split pode gerar snapshot transitório com 4 chaves (inválido por design); o painel nunca mostra "Inválida" por causa dele.
+8. **B+ semântica:** em-ordem = varredura das folhas com rótulo "Folhas"; separadores são cópias do menor valor da subárvore à direita e são **recalculados após remoções** (`refreshBPlusKeys`); folhas encadeadas por arestas tracejadas no layout.
+9. **Persistência v2:** `arvore-binaria:v2` guarda `kind` + árvores por estrutura, com migração automática do legado `v1` (a árvore vira `bst`). Payloads inválidos são descartados por validação.
+10. **Histórico independente:** cada estrutura tem seu próprio `past`/`future`; trocar no seletor preserva o estado (e o undo) de todas.
+
 ---
 
 ## 9. Status de implementação
@@ -362,11 +372,24 @@ Cada fase termina com o app funcionando e um commit convencional.
 - [x] 47 testes de lógica, typecheck e build de produção passando.
 - [x] QA funcional no navegador: inserção, duplicado, busca, 3 casos de remoção, percursos, edição, undo/redo, autosave e limpeza.
 
+### Multi-estruturas (BST / AVL / B / B\* / B+)
+
+- [x] Seletor de estrutura no topo; cada estrutura tem árvore, histórico e amostra próprios.
+- [x] AVL: rotações LL/RR/LR/RL com passos narrados (`baseTree` antes da rotação), rebalanceamento na remoção e editor livre que rebalanceia (`rebalanceWhole`).
+- [x] B/B\*/B+: inserção com splits (B\* redistribui antes), remoção com empréstimo/mesclagem, busca e validação (limites + profundidade única de folhas; B+ com ordem global de folhas e separadores coerentes).
+- [x] Percursos adaptados: para B+ o em-ordem vira **Folhas** (rótulos `BPLUS_TRAVERSAL_*`).
+- [x] Layout multi-chave (`layoutBTree`) com medida de subárvores, sem sobreposição e elos de folha só no B+.
+- [x] Métricas multi-chave (`computeBTreeMetrics`): nós, chaves, valores, ocupação (min/max), ordem 4.
+- [x] Painel lateral com inspetor **somente leitura** para B/B\*/B+ e linhas de fator/balanceamento para AVL.
+- [x] Persistência `arvore-binaria:v2` por estrutura com migração automática do legado `v1`.
+- [x] Correções encontradas pelos testes: separadores do B+ recalculados após remoção; elos de folha restritos ao B+.
+- [x] 131 testes (47 originais + 84 novos em AVL, B, multiway e persistência), typecheck e build passando.
+
 ### Verificação
 
 ```bash
-npm test          # 47 testes
+npm test          # 131 testes (8 arquivos)
 npm run typecheck # sem erros
 npm run build     # build de produção
-npm run dev       # http://localhost:3000
+npm run dev       # http://localhost:3002
 ```
