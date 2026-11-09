@@ -13,6 +13,8 @@ interface BTreeNodeProps {
   visited: boolean;
   onPath: boolean;
   disabled: boolean;
+  /** false = transições instantâneas (undo/redo/editor fora do playback). */
+  animated: boolean;
   onSelect: (id: string) => void;
 }
 
@@ -34,6 +36,7 @@ export function BTreeNode({
   visited,
   onPath,
   disabled,
+  animated,
   onSelect,
 }: BTreeNodeProps) {
   return (
@@ -59,9 +62,16 @@ export function BTreeNode({
       exit={{
         opacity: 0,
         scale: 0.55,
-        transition: { duration: 0.22, ease: "easeIn" },
+        transition: {
+          duration: animated ? 0.22 : 0,
+          ease: "easeIn",
+        },
       }}
-      transition={{ type: "spring", stiffness: 400, damping: 34, mass: 0.8 }}
+      transition={
+        animated
+          ? { type: "spring", stiffness: 400, damping: 34, mass: 0.8 }
+          : { duration: 0 }
+      }
     >
       <button
         type="button"

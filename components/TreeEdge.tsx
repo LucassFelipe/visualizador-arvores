@@ -8,9 +8,11 @@ import styles from "./TreeCanvas.module.css";
 interface TreeEdgeProps {
   edge: LayoutEdge;
   highlighted: boolean;
+  /** false = transições instantâneas (undo/redo/editor fora do playback). */
+  animated: boolean;
 }
 
-export function TreeEdge({ edge, highlighted }: TreeEdgeProps) {
+export function TreeEdge({ edge, highlighted, animated }: TreeEdgeProps) {
   return (
     <motion.div
       className={cx(
@@ -32,8 +34,15 @@ export function TreeEdge({ edge, highlighted }: TreeEdgeProps) {
         y: edge.y - 1,
         rotate: edge.angle,
       }}
-      exit={{ opacity: 0, transition: { duration: 0.18 } }}
-      transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+      exit={{
+        opacity: 0,
+        transition: { duration: animated ? 0.18 : 0 },
+      }}
+      transition={
+        animated
+          ? { duration: 0.42, ease: [0.22, 1, 0.36, 1] }
+          : { duration: 0 }
+      }
     />
   );
 }

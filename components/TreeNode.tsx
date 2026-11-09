@@ -16,6 +16,8 @@ interface TreeNodeProps {
   visited: boolean;
   onPath: boolean;
   disabled: boolean;
+  /** false = transições instantâneas (undo/redo/editor fora do playback). */
+  animated: boolean;
   showAddSlots: boolean;
   hasLeft: boolean;
   hasRight: boolean;
@@ -42,6 +44,7 @@ export function TreeNode({
   visited,
   onPath,
   disabled,
+  animated,
   showAddSlots,
   hasLeft,
   hasRight,
@@ -72,9 +75,16 @@ export function TreeNode({
       exit={{
         opacity: 0,
         scale: 0.45,
-        transition: { duration: 0.24, ease: "easeIn" },
+        transition: {
+          duration: animated ? 0.24 : 0,
+          ease: "easeIn",
+        },
       }}
-      transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.8 }}
+      transition={
+        animated
+          ? { type: "spring", stiffness: 420, damping: 34, mass: 0.8 }
+          : { duration: 0 }
+      }
     >
       <button
         type="button"

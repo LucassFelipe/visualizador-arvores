@@ -307,6 +307,7 @@ export function TreeCanvas() {
               <TreeEdge
                 key={edge.id}
                 edge={edge}
+                animated={isBusy}
                 highlighted={
                   edge.variant !== "leaf-link" &&
                   pathIds.has(edge.parentId) &&
@@ -324,6 +325,7 @@ export function TreeCanvas() {
                     <BTreeNode
                       key={node.id}
                       node={node}
+                      animated={isBusy}
                       selected={state.selectedId === node.id}
                       active={active}
                       compare={active ? currentStep?.compare : undefined}
@@ -344,6 +346,7 @@ export function TreeCanvas() {
                     <TreeNode
                       key={node.id}
                       node={node}
+                      animated={isBusy}
                       selected={state.selectedId === node.id}
                       active={active}
                       compare={active ? currentStep?.compare : undefined}
